@@ -94,6 +94,23 @@ logpath = /var/log/auth.log
 maxretry = 3
 bantime = 1h
 EOF
+if ! dpkg -s fail2ban >/dev/null 2>&1; then
+  echo -e "${YELLOW}Fail2Ban belum terpasang, memasang ulang...${NC}"
+  apt install -y fail2ban >/dev/null 2>&1 || {
+    echo -e "${RED}Gagal memasang Fail2Ban.${NC}"
+    exit 1
+  }
+fi
+
+if [ ! -f /lib/systemd/system/fail2ban.service ]; then
+  echo -e "${YELLOW}Mendaftarkan service Fail2Ban manual...${NC}"
+  systemctl daemon-reload || true
+fi
+
+systemctl enable --now fail2ban 2>/dev/null || {
+  echo -e "${YELLOW}⚠️  Fail2Ban tidak memiliki unit systemd, mungkin environment minimal (LXC/OpenVZ).${NC}"
+}
+
 systemctl enable --now fail2ban
 
 
