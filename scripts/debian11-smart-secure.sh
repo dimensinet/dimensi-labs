@@ -1,139 +1,101 @@
 #!/bin/bash
-# ===================================================
-# 🧠 SMART AUTO SECURE DEBIAN 11 (Final Non-Interactive)
-# by GPT-5 x DimensiNet
-# ===================================================
-# ✅ Default username: admin
-# ✅ Default SSH port: 22
-# ✅ Non-interactive apt (no stuck prompt)
-# ✅ Full setup: SSH Key, sudo, UFW, Fail2Ban
-# ✅ Animated + colorized output
-# ===================================================
+# ==========================================
+# Debian 11/12 Secure Setup Script (v2.0)
+# by ChatGPT (for Eko Sulistyawan)
+# ==========================================
 
-# === WARNA ===
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-RED='\033[0;31m'
-NC='\033[0m'
+set -e
 
-# === ANIMASI LOADING ===
-loading() {
-  local pid=$!
-  local delay=0.15
-  local spin='|/-\'
-  while [ -d /proc/$pid ]; do
-    for i in $(seq 0 3); do
-      printf "\r${YELLOW}⏳ %s${NC}" "${spin:$i:1}"
-      sleep $delay
-    done
-  done
-  printf "\r${GREEN}✅ Done!${NC}\n"
-}
+echo "🔐 Starting Secure Setup for Debian 11/12..."
+sleep 2
 
-# === HEADER ===
-clear
-echo -e "${CYAN}"
-echo "=============================================="
-echo " 🔐 SMART DEBIAN 11 SECURE INSTALLER"
-echo "=============================================="
-echo -e "${NC}"
-sleep 1
+# ========== USER SETUP ==========
+read -p "👤 Masukkan nama user admin baru: " NEWUSER
+adduser --gecos "" $NEWUSER
+usermod -aG sudo $NEWUSER
+echo "✅ User $NEWUSER telah ditambahkan ke grup sudo."
 
-# === INPUT DEFAULT DENGAN OPSI GANTI ===
-read -p "🧩 Masukkan username baru (default: admin): " NEW_USER
-NEW_USER=${NEW_USER:-admin}
+# ========== SSH KEY SETUP ==========
+read -p "🔑 Masukkan public SSH key (mulai dengan ssh-rsa atau ssh-ed25519): " SSHKEY
+mkdir -p /home/$NEWUSER/.ssh
+echo "$SSHKEY" > /home/$NEWUSER/.ssh/authorized_keys
+chmod 700 /home/$NEWUSER/.ssh
+chmod 600 /home/$NEWUSER/.ssh/authorized_keys
+chown -R $NEWUSER:$NEWUSER /home/$NEWUSER/.ssh
+echo "✅ SSH key ditambahkan untuk user $NEWUSER."
 
-read -p "🔐 Masukkan port SSH baru (default: 22): " SSH_PORT
-SSH_PORT=${SSH_PORT:-22}
+# ========== DISABLE ROOT LOGIN ==========
+echo "🔒 Menonaktifkan root login via SSH..."
+sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/^#\?ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+echo "AllowUsers $NEWUSER" >> /etc/ssh/sshd_config
+systemctl restart ssh
+echo "✅ Root login dan password SSH dinonaktifkan."
 
-echo
-read -p "🗝️  Paste isi Public Key (publickey.pub): " PUBKEY
-if [[ -z "$PUBKEY" ]]; then
-  echo -e "${RED}❌ Public key tidak boleh kosong! Jalankan ulang script.${NC}"
-  exit 1
-fi
+# ========== UPDATE & SECURITY TOOLS ==========
+echo "🧩 Mengupdate sistem dan memasang tools keamanan..."
+export DEBIAN_FRONTEND=noninteractive
+systemctl stop unattended-upgrades 2>/dev/null || true
+apt update -y
+apt -o Dpkg::Options::="--force-confdef" \
+    -o Dpkg::Options::="--force-confold" \
+    full-upgrade -yq
+apt install -yq sudo curl wget nano htop ufw fail2ban unattended-upgrades auditd rkhunter chkrootkit chrony
 
-echo
-echo -e "${YELLOW}🚀 Memulai setup aman untuk user '${NEW_USER}' di port ${SSH_PORT}...${NC}"
-sleep 1
+# ========== TIMEZONE & SYNC WAKTU ==========
+timedatectl set-timezone Asia/Jakarta
+systemctl enable --now chronyd
 
-# === 1️⃣ UPDATE SISTEM TANPA PROMPT ===
-echo -e "${YELLOW}[1/8] Updating system packages (non-interactive)...${NC}"
-(
-DEBIAN_FRONTEND=noninteractive apt update -y
-DEBIAN_FRONTEND=noninteractive apt full-upgrade -y \
-  -o Dpkg::Options::="--force-confdef" \
-  -o Dpkg::Options::="--force-confold"
-) & loading
-
-# === 2️⃣ PASANG TOOLS ===
-echo -e "${YELLOW}[2/8] Installing essential tools...${NC}"
-(
-DEBIAN_FRONTEND=noninteractive apt install -y sudo ufw fail2ban curl wget nano net-tools \
-  -o Dpkg::Options::="--force-confdef" \
-  -o Dpkg::Options::="--force-confold"
-) & loading
-
-# === 3️⃣ TAMBAH USER ===
-echo -e "${YELLOW}[3/8] Creating sudo user '${NEW_USER}'...${NC}"
-(adduser --disabled-password --gecos "" $NEW_USER && usermod -aG sudo $NEW_USER) & loading
-
-# === 4️⃣ PASANG SSH KEY ===
-echo -e "${YELLOW}[4/8] Setting up SSH keys...${NC}"
-mkdir -p /root/.ssh
-echo "$PUBKEY" > /root/.ssh/authorized_keys
-chmod 700 /root/.ssh
-chmod 600 /root/.ssh/authorized_keys
-chown -R root:root /root/.ssh
-
-mkdir -p /home/$NEW_USER/.ssh
-echo "$PUBKEY" > /home/$NEW_USER/.ssh/authorized_keys
-chmod 700 /home/$NEW_USER/.ssh
-chmod 600 /home/$NEW_USER/.ssh/authorized_keys
-chown -R $NEW_USER:$NEW_USER /home/$NEW_USER/.ssh
-sleep 1
-
-# === 5️⃣ KONFIGURASI SSH ===
-echo -e "${YELLOW}[5/8] Configuring SSH server...${NC}"
-cp /etc/ssh/sshd_config /etc/ssh/sshd_config.backup
-sed -i "s/^#*Port .*/Port $SSH_PORT/g" /etc/ssh/sshd_config
-sed -i "s/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/g" /etc/ssh/sshd_config
-sed -i "s/^#*PasswordAuthentication.*/PasswordAuthentication no/g" /etc/ssh/sshd_config
-sed -i "s/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/g" /etc/ssh/sshd_config
-systemctl restart ssh &> /dev/null
-sleep 1
-
-# === 6️⃣ FIREWALL ===
-echo -e "${YELLOW}[6/8] Configuring UFW firewall...${NC}"
+# ========== FIREWALL ==========
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow $SSH_PORT/tcp comment "SSH Access"
-ufw allow 80,443/tcp comment "Web Traffic"
-ufw --force enable &> /dev/null
-sleep 1
+ufw allow 22/tcp comment 'SSH Secure'
+ufw allow 80,443/tcp comment 'HTTP/HTTPS'
+ufw enable
+ufw status verbose
 
-# === 7️⃣ FAIL2BAN ===
-echo -e "${YELLOW}[7/8] Enabling Fail2Ban...${NC}"
-systemctl enable fail2ban &> /dev/null
-systemctl start fail2ban &> /dev/null
-sleep 1
+# ========== FAIL2BAN ==========
+systemctl enable --now fail2ban
 
-# === 8️⃣ RINGKASAN ===
-IP=$(hostname -I | awk '{print $1}')
-clear
-echo -e "${GREEN}"
-echo "=============================================="
-echo "✅ SECURE SETUP COMPLETE - DEBIAN 11"
-echo "=============================================="
-echo -e "${CYAN}📡 IP VPS   :${NC} $IP"
-echo -e "${CYAN}🔐 SSH Port :${NC} $SSH_PORT"
-echo -e "${CYAN}👤 User Sudo:${NC} $NEW_USER"
-echo -e "${CYAN}🔑 SSH Key  :${NC} Aktif (Password login dinonaktifkan)"
-echo -e "${GREEN}"
-echo "----------------------------------------------"
-echo -e "💡 Gunakan perintah login:"
-echo -e "${YELLOW}ssh -i id_rsa $NEW_USER@$IP -p $SSH_PORT${NC}"
-echo "----------------------------------------------"
-echo -e "${CYAN}🔥 Server sudah diamankan & siap digunakan.${NC}"
-echo -e "${GREEN}==============================================${NC}"
+# ========== HARDEN KERNEL ==========
+cat <<EOF >> /etc/sysctl.conf
+
+# --- Security Hardening ---
+kernel.randomize_va_space = 2
+net.ipv4.conf.all.rp_filter = 1
+net.ipv4.conf.default.rp_filter = 1
+net.ipv4.tcp_syncookies = 1
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.icmp_ignore_bogus_error_responses = 1
+EOF
+sysctl -p
+
+# ========== AUTO SECURITY UPDATE ==========
+dpkg-reconfigure --priority=low unattended-upgrades
+
+# ========== CRON AUTO UPDATE ==========
+echo "🕒 Menambahkan cron auto update mingguan..."
+(crontab -l 2>/dev/null; echo "@weekly apt update && apt full-upgrade -y && apt autoremove -y") | crontab -
+
+# ========== ROOTKIT CHECK INITIAL ==========
+rkhunter --update
+rkhunter --propupd
+
+# ========== FINAL MESSAGE ==========
+echo ""
+echo "=========================================="
+echo "✅ Instalasi & Hardening Selesai!"
+echo "🧱 Detail:"
+echo "  • User admin : $NEWUSER"
+echo "  • SSH key     : sudah ditambahkan"
+echo "  • Root login  : nonaktif (key-only)"
+echo "  • Firewall    : aktif (UFW)"
+echo "  • Fail2ban    : aktif"
+echo "  • Auto update : mingguan via cron"
+echo "  • Timezone    : Asia/Jakarta"
+echo "=========================================="
+echo "💡 Sekarang login ulang pakai:"
+echo "   ssh $NEWUSER@$(hostname -I | awk '{print $1}')"
+echo "   (pastikan login berhasil sebelum keluar dari root)"
+echo "=========================================="
