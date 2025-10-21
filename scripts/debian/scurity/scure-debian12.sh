@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
-# [SECURE ROOT MAX ULTRA] Debian 12 Final (ASCII Clean)
-# Root aktif • Interaktif • Warna penuh • Aman
+# [SECURE ROOT MAX ULTRA] Debian 12 — Clean Minimal Version
+# Fokus: ubah port SSH + keamanan dasar
 # ============================================================
 
 # Auto-fix CRLF/BOM
@@ -14,7 +14,6 @@ set -euo pipefail
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 BLUE='\033[0;34m'; PURPLE='\033[0;35m'; CYAN='\033[0;36m'; NC='\033[0m'
 
-# Animasi loading
 loading() {
   local msg="$1"
   echo -ne "${CYAN}${msg}${NC}"
@@ -30,7 +29,7 @@ test_local_port(){ local port="$1"; timeout 3 bash -c "cat < /dev/null > /dev/tc
 clear
 echo -e "${PURPLE}"
 echo "=========================================================="
-echo "       SECURE ROOT MAX ULTRA -- Debian 12 (ASCII Clean)"
+echo "       SECURE ROOT MAX ULTRA — Debian 12 (Minimal)"
 echo "=========================================================="
 echo -e "${NC}"
 sleep 0.5
@@ -54,24 +53,6 @@ else
 fi
 
 echo
-printf "%b" "${CYAN}Masukkan port lain yang ingin dibuka (pisahkan koma, contoh: 80,443): ${NC}"
-read -r OTHER_PORTS_RAW
-OTHER_PORTS_RAW="$(trim "$OTHER_PORTS_RAW")"
-
-OPEN_PORTS=()
-if [ -n "$OTHER_PORTS_RAW" ]; then
-  IFS=',' read -r -a PORT_ARR <<< "${OTHER_PORTS_RAW// /}"
-  for P in "${PORT_ARR[@]}"; do
-    if is_valid_port "$P"; then
-      OPEN_PORTS+=("$P")
-    else
-      echo -e "${YELLOW}Abaikan port tidak valid: ${P}${NC}"
-    fi
-  done
-fi
-OPEN_PORTS+=("$SSH_PORT")
-
-echo
 printf "%b" "${CYAN}Aktifkan Stealth Mode (drop ping)? (y/n): ${NC}"
 read -r OPT_STEALTH
 echo
@@ -84,11 +65,16 @@ apt update -y && apt upgrade -y
 loading "Instal paket keamanan"
 apt install -y ufw fail2ban auditd libpam-pwquality unattended-upgrades iptables-persistent curl wget sudo nano net-tools >/dev/null 2>&1 || true
 
+# Pastikan ufw terinstall
+if ! command -v ufw &>/dev/null; then
+  echo -e "${YELLOW}UFW tidak ditemukan, memasang ulang...${NC}"
+  apt install -y ufw >/dev/null 2>&1 || true
+fi
+
 loading "Konfigurasi firewall"
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow in on lo
-for p in "${OPEN_PORTS[@]}"; do ufw allow "${p}/tcp"; done
+ufw allow "${SSH_PORT}/tcp"
 ufw allow 22/tcp
 ufw --force enable
 ufw logging low
@@ -127,26 +113,6 @@ Akses hanya untuk pengguna resmi.
 Semua aktivitas diawasi dan dicatat.
 ===========================================
 EOF
-
-echo
-printf "%b" "${CYAN}Tambahkan SSH Public Key untuk root? (y/n): ${NC}"
-read -r ADDKEY
-if [[ "${ADDKEY,,}" == "y" ]]; then
-  printf "%b\n" "${YELLOW}Tempel SSH Public Key kamu:${NC}"
-  read -r PUBKEY
-  mkdir -p /root/.ssh
-  echo "$PUBKEY" >> /root/.ssh/authorized_keys
-  chmod 700 /root/.ssh
-  chmod 600 /root/.ssh/authorized_keys
-  chown -R root:root /root/.ssh
-  echo -e "${GREEN}SSH key ditambahkan.${NC}"
-  printf "%b" "${YELLOW}Nonaktifkan login password (key-only)? (y/n): ${NC}"
-  read -r DISABLE_PASS
-  if [[ "${DISABLE_PASS,,}" == "y" ]]; then
-    sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' "$SSHD"
-    echo -e "${GREEN}Password login dimatikan.${NC}"
-  fi
-fi
 
 loading "Menerapkan sysctl hardening"
 cat >/etc/sysctl.d/99-secure.conf <<EOF
