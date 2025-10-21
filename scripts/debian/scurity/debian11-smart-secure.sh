@@ -33,7 +33,7 @@ chown -R $NEWUSER:$NEWUSER /home/$NEWUSER/.ssh
 echo "✅ SSH key berhasil ditambahkan untuk user $NEWUSER."
 
 # ========== 3️⃣ Custom SSH Port ==========
-read -p "📡 Masukkan port SSH custom (misal: 9822): " CUSTOM_PORT
+read -p "📡 Masukkan port SSH custom (misal: 2222): " CUSTOM_PORT
 if [[ "$CUSTOM_PORT" =~ ^[0-9]+$ ]] && [ "$CUSTOM_PORT" -ge 1024 ] && [ "$CUSTOM_PORT" -le 65535 ]; then
     echo "🔧 Mengubah SSH ke port $CUSTOM_PORT..."
     SSHD_CONF="/etc/ssh/sshd_config"
