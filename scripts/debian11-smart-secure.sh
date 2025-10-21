@@ -1,13 +1,13 @@
 #!/bin/bash
 # ===================================================
-# 🧠 SMART AUTO SECURE DEBIAN 11 (Default Safe Mode)
-# by GPT-5 x DIMENSI
+# 🧠 SMART AUTO SECURE DEBIAN 11 (Final Non-Interactive)
+# by GPT-5 x DimensiNet
 # ===================================================
 # ✅ Default username: admin
 # ✅ Default SSH port: 22
-# ✅ Full auto secure setup with SSH key, UFW, Fail2Ban
-# ✅ Disable password login after setup
-# ✅ Animated + colorized terminal output
+# ✅ Non-interactive apt (no stuck prompt)
+# ✅ Full setup: SSH Key, sudo, UFW, Fail2Ban
+# ✅ Animated + colorized output
 # ===================================================
 
 # === WARNA ===
@@ -40,7 +40,7 @@ echo "=============================================="
 echo -e "${NC}"
 sleep 1
 
-# === INPUT DENGAN DEFAULT ===
+# === INPUT DEFAULT DENGAN OPSI GANTI ===
 read -p "🧩 Masukkan username baru (default: admin): " NEW_USER
 NEW_USER=${NEW_USER:-admin}
 
@@ -58,16 +58,25 @@ echo
 echo -e "${YELLOW}🚀 Memulai setup aman untuk user '${NEW_USER}' di port ${SSH_PORT}...${NC}"
 sleep 1
 
-# === 1️⃣ UPDATE SISTEM ===
-echo -e "${YELLOW}[1/8] Updating system packages...${NC}"
-(apt update -y && apt full-upgrade -y) & loading
+# === 1️⃣ UPDATE SISTEM TANPA PROMPT ===
+echo -e "${YELLOW}[1/8] Updating system packages (non-interactive)...${NC}"
+(
+DEBIAN_FRONTEND=noninteractive apt update -y
+DEBIAN_FRONTEND=noninteractive apt full-upgrade -y \
+  -o Dpkg::Options::="--force-confdef" \
+  -o Dpkg::Options::="--force-confold"
+) & loading
 
 # === 2️⃣ PASANG TOOLS ===
-echo -e "${YELLOW}[2/8] Installing essential packages...${NC}"
-(apt install -y sudo ufw fail2ban curl wget nano net-tools) & loading
+echo -e "${YELLOW}[2/8] Installing essential tools...${NC}"
+(
+DEBIAN_FRONTEND=noninteractive apt install -y sudo ufw fail2ban curl wget nano net-tools \
+  -o Dpkg::Options::="--force-confdef" \
+  -o Dpkg::Options::="--force-confold"
+) & loading
 
 # === 3️⃣ TAMBAH USER ===
-echo -e "${YELLOW}[3/8] Creating user '${NEW_USER}' with sudo privileges...${NC}"
+echo -e "${YELLOW}[3/8] Creating sudo user '${NEW_USER}'...${NC}"
 (adduser --disabled-password --gecos "" $NEW_USER && usermod -aG sudo $NEW_USER) & loading
 
 # === 4️⃣ PASANG SSH KEY ===
@@ -110,7 +119,7 @@ systemctl enable fail2ban &> /dev/null
 systemctl start fail2ban &> /dev/null
 sleep 1
 
-# === 8️⃣ CEK IP DAN RINGKASAN ===
+# === 8️⃣ RINGKASAN ===
 IP=$(hostname -I | awk '{print $1}')
 clear
 echo -e "${GREEN}"
