@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# [SECURE ROOT MAX ULTRA] Debian 12 — Clean Minimal Version
+# [SECURE ROOT MAX ULTRA] Debian 12 — Minimal & Clean
 # Fokus: ubah port SSH + keamanan dasar
 # ============================================================
 
@@ -29,7 +29,7 @@ test_local_port(){ local port="$1"; timeout 3 bash -c "cat < /dev/null > /dev/tc
 clear
 echo -e "${PURPLE}"
 echo "=========================================================="
-echo "       SECURE ROOT MAX ULTRA — Debian 12 (Minimal)"
+echo "       SECURE ROOT MAX ULTRA -- Debian 12 (Minimal)"
 echo "=========================================================="
 echo -e "${NC}"
 sleep 0.5
