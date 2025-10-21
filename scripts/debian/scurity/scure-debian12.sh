@@ -84,7 +84,8 @@ ufw --force enable
 ufw logging low
 
 loading "Konfigurasi Fail2Ban"
-cat >/etc/fail2ban/jail.local <<EOF
+mkdir -p /etc/fail2ban
+tee /etc/fail2ban/jail.local >/dev/null <<EOF
 [sshd]
 enabled = true
 port = ${SSH_PORT}
@@ -94,6 +95,7 @@ maxretry = 3
 bantime = 1h
 EOF
 systemctl enable --now fail2ban
+
 
 loading "Konfigurasi SSH"
 SSHD="/etc/ssh/sshd_config"
