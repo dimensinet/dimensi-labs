@@ -1,6 +1,6 @@
 # 🛡️ Debian Secure Setup v3.3-UI
 ### Hardened Debian 11/12 Auto Configuration Script  
-> By [dimensi.net](https://dimensi.net) — with ❤️ powered by ChatGPT
+> By [dimensi.net](https://dimensi.net) — with ❤️
 
 ---
 
@@ -16,7 +16,7 @@ Cocok untuk server pribadi, hosting, API, atau VPN gateway.
 |--------|------------|
 | 🔑 **SSH Key Only Login** | Hanya login dengan SSH key (tanpa password) |
 | 🔒 **Disable Root SSH** | Menonaktifkan login root setelah setup |
-| 📡 **Custom SSH Port** | Mengganti port SSH default (misal `9822`) |
+| 📡 **Custom SSH Port** | Mengganti port SSH default (misal `2222`) |
 | 🧱 **Firewall UFW** | Menutup semua port kecuali 80, 443, dan port SSH custom |
 | 🚫 **Fail2Ban** | Memblok IP otomatis saat gagal login berkali-kali |
 | 🔄 **Auto Security Update** | Update otomatis paket keamanan |
@@ -84,14 +84,14 @@ Script akan meminta input:
 ```
 👤 Masukkan nama user admin baru: dimensi
 🔑 Masukkan public SSH key: ssh-ed25519 AAAA...
-📡 Masukkan port SSH custom (misal: 9822)
+📡 Masukkan port SSH custom (misal: 2222)
 ```
 
 Kemudian akan tampil animasi progress seperti ini:
 ```
 === Mengaktifkan firewall UFW ===
 Mengaktifkan UFW.......... done.
-✅ Firewall aktif dan port 9822 terbuka.
+✅ Firewall aktif dan port 2222 terbuka.
 ```
 
 ---
@@ -110,8 +110,8 @@ Script akan otomatis:
 ```
 ==========================================
 ✅ Instalasi & Hardening Selesai!
-  • User admin : dimensi
-  • Port SSH   : 9822
+  • User admin : admin123
+  • Port SSH   : 2222
   • Root login : DINONAKTIFKAN ✅
   • Firewall   : Aktif (UFW)
   • Fail2Ban   : Aktif
@@ -119,7 +119,7 @@ Script akan otomatis:
   • Timezone   : Asia/Jakarta
 ==========================================
 💡 Tes login di MobaXterm:
-   ssh -p 9822 dimensi@41.216.178.67
+   ssh -p 2222 admin123@<IP_SERVER>
 
 📁 Jika root login masih aktif, jalankan:
    sudo /root/disable-root-ssh.sh
@@ -132,7 +132,7 @@ Script akan otomatis:
 
 Login menggunakan user baru:
 ```bash
-ssh -p 9822 dimensi@<IP_SERVER>
+ssh -p 2222 admin123@<IP_SERVER>
 ```
 
 Cek status keamanan:
@@ -151,7 +151,7 @@ sudo timedatectl
 Status: active
 To                         Action      From
 --                         ------      ----
-9822/tcp                   ALLOW IN    Anywhere                   # SSH Custom
+2222/tcp                   ALLOW IN    Anywhere                   # SSH Custom
 80,443/tcp                 ALLOW IN    Anywhere                   # HTTP/HTTPS
 
 Status for the jail: sshd
@@ -198,14 +198,6 @@ Tujuannya agar kamu bisa restore kapan pun tanpa setup ulang.
 
 ## 👨‍💻 Pengembang
 
-| Info | Detail |
-|------|--------|
-| Author | ChatGPT x dimensi.net |
-| Versi | v3.3-UI |
-| Kompatibilitas | Debian 11 / Debian 12 |
-| Lisensi | MIT License |
-
----
 
 ## 🖥️ Tampilan Demo (Terminal)
 
@@ -216,7 +208,7 @@ Menambahkan user dimensi.......... done.
 ✅ User dimensi berhasil dibuat.
 === Mengatur port SSH custom ===
 Mengubah konfigurasi SSH.......... done.
-✅ Firewall aktif dan port 9822 terbuka.
+✅ Firewall aktif dan port 2222 terbuka.
 🔒 Menonaktifkan root login otomatis...
 ✅ Root SSH login telah dinonaktifkan.
 ```
@@ -229,7 +221,7 @@ Mengubah konfigurasi SSH.......... done.
 |----------|-----------|
 | Unduh script | `wget -O install-secure-v3.3-ui.sh <URL>` |
 | Jalankan script | `bash install-secure-v3.3-ui.sh` |
-| Tes login SSH | `ssh -p 9822 dimensi@<IP_SERVER>` |
+| Tes login SSH | `ssh -p 2222 dimensi@<IP_SERVER>` |
 | Cek firewall | `sudo ufw status verbose` |
 | Disable root manual | `sudo /root/disable-root-ssh.sh` |
 
@@ -241,11 +233,6 @@ Mengubah konfigurasi SSH.......... done.
 - Diperbarui otomatis  
 - Root login nonaktif  
 - Siap digunakan untuk produksi  
-
----
-
-## 🌐 Repositori
-📦 [https://github.com/dimensinet/secure-debian](https://github.com/dimensinet/secure-debian)
 
 ---
 
