@@ -1,67 +1,101 @@
 #!/bin/bash
-# ============================================================
-# SECURE ROOT FIX — Debian 12
-# Membenahi izin SSH, menonaktifkan login password,
-# mengaktifkan auto security update, tanpa whitelist IP.
-# ============================================================
+# ==========================================================
+# SAFE UPGRADE DEBIAN 11 → 12 (BOOKWORM)
+# No Screen • No SSH Disconnect • Auto Mirror Detect
+# ==========================================================
 
-set -euo pipefail
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
-
-echo -e "${CYAN}\n🧱 [1/5] Memperbaiki permission folder SSH root...${NC}"
-mkdir -p /root/.ssh
-chmod 700 /root/.ssh
-chmod 600 /root/.ssh/authorized_keys 2>/dev/null || true
-chown -R root:root /root/.ssh
-echo -e "${GREEN}✔ Permission SSH sudah aman.${NC}"
-
-echo -e "${CYAN}\n🔐 [2/5] Mengamankan konfigurasi SSH...${NC}"
-SSHD="/etc/ssh/sshd_config"
-cp -n "$SSHD" "$SSHD.bak-$(date +%F-%H%M)" || true
-
-# Nonaktifkan login password dan hanya izinkan key
-sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' "$SSHD"
-sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' "$SSHD"
-sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' "$SSHD"
-
-# Pastikan port tetap sama (jangan ubah otomatis)
-PORT=$(grep -E '^Port ' "$SSHD" | awk '{print $2}' || echo "22")
-if [ -z "$PORT" ]; then PORT=22; fi
-echo -e "${YELLOW}Port SSH aktif tetap: ${PORT}${NC}"
-
-systemctl restart ssh || systemctl restart sshd
-echo -e "${GREEN}✔ SSH dikonfigurasi ulang (key-only login aktif).${NC}"
-
-echo -e "${CYAN}\n🚨 [3/5] Mengecek dan mengaktifkan Fail2Ban...${NC}"
-if ! dpkg -s fail2ban >/dev/null 2>&1; then
-  echo -e "${YELLOW}Fail2Ban belum ada, menginstal...${NC}"
-  apt install -y fail2ban >/dev/null 2>&1
+# Pastikan root
+if [ "$(id -u)" -ne 0 ]; then
+  echo "❌ Jalankan script ini sebagai root!"
+  exit 1
 fi
-systemctl enable --now fail2ban || echo -e "${RED}⚠️ Fail2Ban tidak bisa diaktifkan.${NC}"
-echo -e "${GREEN}✔ Fail2Ban aktif.${NC}"
 
-echo -e "${CYAN}\n🛠 [4/5] Mengaktifkan auto security update...${NC}"
-apt install -y unattended-upgrades >/dev/null 2>&1
-dpkg-reconfigure --priority=low unattended-upgrades
-systemctl enable --now unattended-upgrades
-echo -e "${GREEN}✔ Auto security update aktif.${NC}"
+echo "🚀 Memulai upgrade Debian 11 → 12 (Bookworm) tanpa screen..."
+sleep 2
 
-echo -e "${CYAN}\n🧩 [5/5] Memverifikasi kernel hardening...${NC}"
-cat >/etc/sysctl.d/99-secure-fix.conf <<'EOF'
-fs.protected_hardlinks = 1
-fs.protected_symlinks = 1
-kernel.kptr_restrict = 2
-kernel.sysrq = 0
-kernel.dmesg_restrict = 1
-net.ipv4.tcp_syncookies = 1
-net.ipv4.conf.all.rp_filter = 1
-net.ipv4.conf.all.accept_redirects = 0
-net.ipv4.conf.all.send_redirects = 0
-net.ipv4.conf.all.accept_source_route = 0
+# Non-interaktif penuh
+export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+export APT_LISTCHANGES_FRONTEND=none
+
+# -------------------------------------------
+# 1️⃣ Backup konfigurasi
+# -------------------------------------------
+BACKUP_DIR="/root/backup-before-upgrade-$(date +%F_%H-%M)"
+mkdir -p "$BACKUP_DIR"
+
+echo "📦 Membackup konfigurasi ke $BACKUP_DIR ..."
+cp -a /etc/network/interfaces "$BACKUP_DIR/interfaces.bak" 2>/dev/null || true
+cp -a /etc/ssh/sshd_config "$BACKUP_DIR/sshd_config.bak" 2>/dev/null || true
+cp -a /etc/resolv.conf "$BACKUP_DIR/resolv.conf.bak" 2>/dev/null || true
+cp -a /etc/apt/sources.list "$BACKUP_DIR/sources.list.bak" 2>/dev/null || true
+echo "✅ Backup selesai."
+
+# -------------------------------------------
+# 2️⃣ Cegah SSH restart saat upgrade
+# -------------------------------------------
+echo "🛑 Menahan paket openssh agar tidak restart selama upgrade..."
+apt-mark hold openssh-server openssh-client openssh-sftp-server
+
+# -------------------------------------------
+# 3️⃣ Update Debian 11 dulu
+# -------------------------------------------
+echo "🔹 Update sistem Debian 11..."
+apt update -y && apt upgrade -y && apt full-upgrade -y
+
+# -------------------------------------------
+# 4️⃣ Deteksi mirror terbaik
+# -------------------------------------------
+echo "🌐 Mengecek koneksi mirror kambing.ui.ac.id..."
+if curl -s --head --connect-timeout 5 http://kambing.ui.ac.id/debian/dists/bookworm/Release | grep "200 OK" > /dev/null; then
+  MIRROR="http://kambing.ui.ac.id/debian/"
+  echo "✅ Menggunakan mirror lokal Indonesia: $MIRROR"
+else
+  MIRROR="http://deb.debian.org/debian/"
+  echo "⚠️ Mirror kambing.ui.ac.id tidak merespons, berpindah ke global mirror: $MIRROR"
+fi
+sleep 1
+
+# -------------------------------------------
+# 5️⃣ Ganti repository ke Debian 12
+# -------------------------------------------
+echo "🔹 Mengganti sources.list ke Debian 12..."
+cat <<EOF > /etc/apt/sources.list
+deb ${MIRROR} bookworm main contrib non-free non-free-firmware
+deb ${MIRROR} bookworm-updates main contrib non-free non-free-firmware
+deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
 EOF
-sysctl --system >/dev/null 2>&1
-echo -e "${GREEN}✔ Kernel hardening diterapkan.${NC}"
 
-echo -e "\n${GREEN}🎯 Semua perbaikan keamanan root selesai!${NC}"
-echo -e "${YELLOW}SSH kini hanya menerima login menggunakan SSH key.${NC}"
-echo -e "${CYAN}Jalankan: ${NC}systemctl status fail2ban ${CYAN}dan${NC} systemctl status unattended-upgrades ${CYAN}untuk verifikasi.${NC}"
+# -------------------------------------------
+# 6️⃣ Upgrade ke Debian 12
+# -------------------------------------------
+echo "🔹 Menjalankan full-upgrade ke Debian 12..."
+apt clean
+apt update -y
+apt -y --allow-downgrades --allow-remove-essential --allow-change-held-packages \
+  -o Dpkg::Options::="--force-confdef" \
+  -o Dpkg::Options::="--force-confold" \
+  full-upgrade
+
+# -------------------------------------------
+# 7️⃣ Lepas hold SSH & upgrade ulang
+# -------------------------------------------
+echo "🔓 Melepaskan hold SSH dan update ulang..."
+apt-mark unhold openssh-server openssh-client openssh-sftp-server
+apt install --reinstall openssh-server -y
+
+# -------------------------------------------
+# 8️⃣ Bersihkan & reboot
+# -------------------------------------------
+echo "🧹 Membersihkan paket lama..."
+apt autoremove -y
+apt autoclean -y
+
+echo "✅ Upgrade selesai tanpa memutus SSH!"
+echo "Versi Debian saat ini:"
+cat /etc/debian_version
+echo
+echo "📂 Backup konfigurasi: $BACKUP_DIR"
+echo "💡 Sistem akan reboot otomatis dalam 20 detik..."
+sleep 20
+reboot
