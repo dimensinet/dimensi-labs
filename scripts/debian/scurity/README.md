@@ -1,239 +1,90 @@
-# 🛡️ Debian Secure Setup v3.3-UI
-### Hardened Debian 11/12 Auto Configuration Script  
-> By [dimensi.net](https://dimensi.net) — with ❤️
+# Dimensi Secure Chill — Debian 12
 
----
+**Dimensi Secure Chill v7.2** adalah skrip interaktif untuk mengamankan server Debian 12.  
+Gaya outputnya santai & sinematik: loading bar, efek "typewriter" saat menampilkan SSH key, jeda antar langkah agar proses mudah diikuti — tetapi semua tindakan yang dijalankan serius dan aman.
 
-## 🎯 Tujuan
-Script ini mengonfigurasi VPS Debian 11/12 agar **aman, optimal, dan siap produksi** secara otomatis.  
-Cocok untuk server pribadi, hosting, API, atau VPN gateway.
+## Fitur utama
+- Aman dari lockout (tidak menonaktifkan PasswordAuthentication jika belum ada SSH key valid)
+- Menampilkan SSH public key dengan efek typewriter
+- Loading bar saat startup (±5 detik)
+- Menambahkan SSH public key manual / dari GitHub
+- Mengamankan permission folder `/root/.ssh`
+- Memperbarui konfigurasi `sshd_config` (Port, PubkeyAuthentication, dsb.)
+- Memasang & mengaktifkan `fail2ban`
+- Menerapkan kebijakan password kuat (libpam-pwquality, min 15 char + simbol)
+- Mengaktifkan `unattended-upgrades`
+- Menerapkan kernel hardening via sysctl
+- Logging lengkap ke `/var/log/dimensi-secure.log`
+- Ringkasan akhir rapi dan berwarna
 
----
+## Requirements
+- Server Debian 12 (tested)
+- Akses root (script harus dijalankan sebagai root)
+- Koneksi internet (untuk menginstall paket dan mengambil key dari GitHub jika dipilih)
 
-## 🚀 Fitur Utama
+> Script berusaha menggunakan only-bash (tanpa `bc`) sehingga kompatibel di sistem standar Debian.
 
-| Fitur | Deskripsi |
-|--------|------------|
-| 🔑 **SSH Key Only Login** | Hanya login dengan SSH key (tanpa password) |
-| 🔒 **Disable Root SSH** | Menonaktifkan login root setelah setup |
-| 📡 **Custom SSH Port** | Mengganti port SSH default (misal `2222`) |
-| 🧱 **Firewall UFW** | Menutup semua port kecuali 80, 443, dan port SSH custom |
-| 🚫 **Fail2Ban** | Memblok IP otomatis saat gagal login berkali-kali |
-| 🔄 **Auto Security Update** | Update otomatis paket keamanan |
-| 🕓 **Chrony + Timezone** | Sinkronisasi waktu otomatis ke `Asia/Jakarta` |
-| 🎨 **Tampilan Berwarna & Progress Bar** | UI terminal interaktif dengan animasi & delay |
-
----
-
-## 🧰 Fitur Keamanan Aktif
-| Komponen | Status |
-|-----------|---------|
-| SSH Root Login | ❌ Dinonaktifkan otomatis |
-| SSH Key Login | ✅ Aktif |
-| Firewall UFW | ✅ Aktif (default deny) |
-| Fail2Ban | ✅ Aktif |
-| Auto Update | ✅ Aktif |
-| Timezone | ✅ Asia/Jakarta |
-| User Admin | ✅ Punya sudo tanpa password |
-
----
-
-## ⚙️ Persiapan
-
-Sebelum mulai:
-- Login sebagai **root**
-- Pastikan sistem menggunakan **Debian 11 atau 12**
-- Siapkan **SSH public key**
-- Pastikan **koneksi internet aktif**
-- Punya akses **console VPS** (untuk jaga-jaga jika SSH terputus)
-
----
-
-## 📦 Instalasi Lengkap
-
-### 1️⃣ Login ke VPS sebagai root
-```bash
-ssh root@<IP_SERVER>
-```
-
----
-
-### 2️⃣ Unduh script
-
-Gunakan `wget` atau `curl`:
+## Instalasi (contoh)
+Salin file ke server kamu (atau gunakan wget/curl langsung):
 
 ```bash
-wget -O install-secure-v3.3-ui.sh https://raw.githubusercontent.com/dimensinet/secure-debian/main/install-secure-v3.3-ui.sh
+mkdir -p /opt/dimensi-labs/debian
+# contoh: unduh dari repository (ganti URL dengan raw file di repo kamu)
+wget -O /opt/dimensi-labs/debian/scure-debian12-chill-v7.2.sh https://raw.githubusercontent.com/<user>/<repo>/main/scripts/debian/scurity/scure-debian12-chill-v7.2.sh
+
+chmod +x /opt/dimensi-labs/debian/scure-debian12-chill-v7.2.sh
 ```
 
-> 💡 Ganti URL sesuai lokasi repositori kamu jika berbeda.
-
----
-
-### 3️⃣ Jalankan script
-
+## Menjalankan
+Jalankan langsung (tidak perlu screen):
 ```bash
-chmod +x install-secure-v3.3-ui.sh
-bash install-secure-v3.3-ui.sh
+bash /opt/dimensi-labs/debian/scure-debian12-chill-v7.2.sh
 ```
 
----
+Script akan:
+1. Menampilkan loading bar
+2. Memperbaiki permission `/root/.ssh`
+3. Memeriksa/menambahkan SSH key
+4. Meminta port SSH (default sesuai konfigurasi)
+5. Menginstall & enable fail2ban, unattended-upgrades, pwquality
+6. Meminta kamu mengganti/validasi password root
+7. Menerapkan kernel hardening
+8. Menampilkan ringkasan akhir dan menyimpan log ke `/var/log/dimensi-secure.log`
 
-### 4️⃣ Ikuti wizard interaktif
-Script akan meminta input:
-```
-👤 Masukkan nama user admin baru: dimensi
-🔑 Masukkan public SSH key: ssh-ed25519 AAAA...
-📡 Masukkan port SSH custom (misal: 2222)
-```
-
-Kemudian akan tampil animasi progress seperti ini:
-```
-=== Mengaktifkan firewall UFW ===
-Mengaktifkan UFW.......... done.
-✅ Firewall aktif dan port 2222 terbuka.
-```
-
----
-
-### 5️⃣ Tunggu hingga selesai  
-Script akan otomatis:
-- Membuat user sudo baru  
-- Mengganti port SSH  
-- Mengaktifkan firewall & Fail2Ban  
-- Menonaktifkan root SSH login (setelah tes login sukses)
-
----
-
-## ✅ Hasil Akhir (contoh output)
-
-```
-==========================================
-✅ Instalasi & Hardening Selesai!
-  • User admin : admin123
-  • Port SSH   : 2222
-  • Root login : DINONAKTIFKAN ✅
-  • Firewall   : Aktif (UFW)
-  • Fail2Ban   : Aktif
-  • AutoUpdate : Aktif
-  • Timezone   : Asia/Jakarta
-==========================================
-💡 Tes login di MobaXterm:
-   ssh -p 2222 admin123@<IP_SERVER>
-
-📁 Jika root login masih aktif, jalankan:
-   sudo /root/disable-root-ssh.sh
-==========================================
-```
-
----
-
-## 🔍 Verifikasi Hasil
-
-Login menggunakan user baru:
+## Verifikasi & Troubleshooting
+- Lihat log utama:
 ```bash
-ssh -p 2222 admin123@<IP_SERVER>
+tail -F /var/log/dimensi-secure.log
 ```
 
-Cek status keamanan:
+- Verifikasi Fail2Ban:
 ```bash
-sudo ufw status verbose
-sudo fail2ban-client status sshd
-sudo systemctl status unattended-upgrades
-sudo timedatectl
+fail2ban-client status sshd
 ```
 
----
-
-## 📊 Contoh Output Verifikasi
-
-```
-Status: active
-To                         Action      From
---                         ------      ----
-2222/tcp                   ALLOW IN    Anywhere                   # SSH Custom
-80,443/tcp                 ALLOW IN    Anywhere                   # HTTP/HTTPS
-
-Status for the jail: sshd
-|- Currently banned: 0
-|- Total failed:     4
-
-Local time: Wed 2025-10-22 01:28:41 WIB
-Time zone: Asia/Jakarta (WIB, +0700)
-NTP service: active
+- Cek konfigurasi SSH:
+```bash
+sshd -T | egrep 'port|passwordauthentication|permitrootlogin|pubkeyauthentication'
 ```
 
----
+- Jika progress bar tidak berjalan sempurna, pastikan terminal mendukung ANSI colors (most do).  
+- Jika script gagal pada pengunduhan GitHub key, periksa koneksi internet & username yang dimasukkan.
 
-## 💾 Backup Snapshot VPS
+## Keamanan penting
+- **Tes login SSH key di sisi client sebelum logout** — script hanya menonaktifkan password jika ada SSH key valid.  
+- Pastikan kamu punya akses ke SSH key yang ditambahkan. Jika tidak yakin, pilih opsi lewati (password tetap aktif) dan tambahkan key dulu lewat console provider.
+- Backup file konfigurasi ada di `/root/backups/scure-before-<timestamp>/`
 
-Setelah instalasi sukses, **buat snapshot VPS** dengan nama:
-```
-secure-base-2025-10-22
-```
-Tujuannya agar kamu bisa restore kapan pun tanpa setup ulang.
-
----
-
-## 🧩 Troubleshooting
-
-| Masalah | Solusi |
-|----------|---------|
-| ❌ SSH tidak bisa login | Akses **console VPS**, ubah `/etc/ssh/sshd_config` → `PermitRootLogin yes`, lalu `systemctl restart ssh` |
-| ⚠️ UFW inactive | Jalankan `sudo ufw --force enable` |
-| ⏰ Waktu salah | Jalankan `sudo timedatectl set-timezone Asia/Jakarta` |
-| 🔒 Root masih bisa login | Jalankan `sudo /root/disable-root-ssh.sh` |
-
----
-
-## 🗂️ Struktur File yang Dibuat
-
-```
-├── install-secure-v3.3-ui.sh
-├── /root/disable-root-ssh.sh
-└── /etc/sudoers.d/90-<user>
+## Contoh penggunaan (one-liner)
+```bash
+mkdir -p /opt/dimensi-labs/debian && \
+wget -O /opt/dimensi-labs/debian/scure-debian12-chill-v7.2.sh https://raw.githubusercontent.com/<user>/<repo>/main/scripts/debian/scurity/scure-debian12-chill-v7.2.sh && \
+chmod +x /opt/dimensi-labs/debian/scure-debian12-chill-v7.2.sh && \
+bash /opt/dimensi-labs/debian/scure-debian12-chill-v7.2.sh
 ```
 
----
+## Contributing
+Silakan fork repo dan buat PR. Masukan fitur: tema warna, integrasi Telegram/email alert, atau profiling untuk distro lain.
 
-## 👨‍💻 Pengembang
-
-
-## 🖥️ Tampilan Demo (Terminal)
-
-```
-🚀 Memulai konfigurasi keamanan Debian 11/12 (v3.3-UI)...
-=== Membuat user admin baru ===
-Menambahkan user dimensi.......... done.
-✅ User dimensi berhasil dibuat.
-=== Mengatur port SSH custom ===
-Mengubah konfigurasi SSH.......... done.
-✅ Firewall aktif dan port 2222 terbuka.
-🔒 Menonaktifkan root login otomatis...
-✅ Root SSH login telah dinonaktifkan.
-```
-
----
-
-## ⚡ Ringkasan Cepat
-
-| Langkah | Perintah |
-|----------|-----------|
-| Unduh script | `wget -O install-secure-v3.3-ui.sh <URL>` |
-| Jalankan script | `bash install-secure-v3.3-ui.sh` |
-| Tes login SSH | `ssh -p 2222 dimensi@<IP_SERVER>` |
-| Cek firewall | `sudo ufw status verbose` |
-| Disable root manual | `sudo /root/disable-root-ssh.sh` |
-
----
-
-## 🏁 Hasil Akhir
-🎉 Server kamu sekarang:
-- Aman dari brute-force  
-- Diperbarui otomatis  
-- Root login nonaktif  
-- Siap digunakan untuk produksi  
-
----
-
-> © 2025 [dimensi.net](https://dimensi.net) — crafted with ❤️ and shell magic.
+## License
+MIT — bebas dipakai dan dimodifikasi. Sertakan credit ke Dimensi Labs (optional).
