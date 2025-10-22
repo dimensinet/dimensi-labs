@@ -1,4 +1,4 @@
-# 🌈 Auto Update Debian 11 → 12 (Bookworm)
+# Auto Update Debian 11 → 12 (Bookworm)
 ### 🧩 by [Dimensi Labs](https://github.com/dimensinet/dimensi-labs)
 
 Script ini dibuat untuk melakukan **upgrade otomatis dan aman dari Debian 11 (Bullseye) ke Debian 12 (Bookworm)**  
@@ -86,11 +86,6 @@ Sebelum upgrade, semua file penting disimpan di:
 
 ---
 
-## 🧪 Mode Aman (Dry Run) – Coming Soon
-Versi berikutnya akan mendukung mode **“dry run”** untuk simulasi upgrade  
-tanpa benar-benar mengubah sistem — cocok untuk testing environment.
-
----
 
 ## 🧑‍💻 Dibuat Oleh
 **Dimensi Labs**  
