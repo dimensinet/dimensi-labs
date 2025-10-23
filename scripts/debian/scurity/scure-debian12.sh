@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================
-# 😎 DIMENSI SECURE CHILL v7.2 — Debian 12 (FINAL)
+# 😎 DIMENSI SECURE CHILL v7.2 — Debian 12 (FINAL HYBRID)
 # Smooth Flow • Interaktif • Cinematic • Safe (no lockout)
-# Features: typewriter SSH-key display, loading bar, delays,
-#           pwquality, fail2ban, unattended-upgrades, sysctl hardening
+# Mode: SSH Key + Password (Hybrid, tetap aman)
 # ============================================================
 
 set -euo pipefail
@@ -19,7 +18,7 @@ WHITE='\033[1;37m'; BOLD='\033[1m'; NC='\033[0m'
 LINE="${CYAN}────────────────────────────────────────────────────────────${NC}"
 SEP="${MAGENTA}╼━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╾${NC}"
 
-# 🎬 Typewriter function (for SSH key display)
+# 🎬 Typewriter function
 typewrite() {
   local text="$1"
   for ((i=0; i<${#text}; i++)); do
@@ -29,7 +28,7 @@ typewrite() {
   echo ""
 }
 
-# 🎚️ Loading bar (smooth, ~5s)
+# 🎚️ Loading bar
 progress_bar() {
   echo -e "${MAGENTA}${BOLD}🚀 Sedang mempersiapkan Dimensi Secure Chill...${NC}\n"
   local bar="■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■"
@@ -104,7 +103,7 @@ if [ "$HAS_KEY" = false ]; then
   warn "Hmm... belum ada SSH key. Yuk kita tambahin dulu biar aman!"
   echo "1) Tempel manual"
   echo "2) Ambil dari GitHub"
-  echo "3) Lewati dulu (biar login password masih bisa)"
+  echo "3) Lewati dulu (biar login password tetap bisa)"
   read -rp "Pilih [1/2/3]: " mode; mode="${mode:-3}"
   case "$mode" in
     1)
@@ -123,7 +122,7 @@ if [ "$HAS_KEY" = false ]; then
 fi
 
 # -------------------------
-# [3] SSH configuration
+# [3] SSH configuration (HYBRID MODE)
 # -------------------------
 say "⚙️ Sekarang kita ubah konfigurasi SSH-nya biar makin aman..."
 sleep 0.8
@@ -134,18 +133,16 @@ read -rp "Mau pakai port berapa buat SSH? [${DEFAULT_PORT}]: " PORT
 PORT="${PORT:-$DEFAULT_PORT}"
 sleep 0.5
 
+# Mode Hybrid: Key aktif + Password tetap diizinkan
 sed -i "s/^#*Port .*/Port ${PORT}/" "$SSHD" || echo "Port ${PORT}" >> "$SSHD"
 sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' "$SSHD"
+sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/' "$SSHD"
+sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' "$SSHD"
 sed -i 's/^#*ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' "$SSHD"
 sed -i 's/^#*UsePAM.*/UsePAM yes/' "$SSHD"
 
-if grep -q '^ssh-' /root/.ssh/authorized_keys; then
-  sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' "$SSHD"
-  sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' "$SSHD"
-  ok "😎 SSH key valid, password login aku matiin biar aman."
-else
-  warn "⚠️  Belum ada key, password login tetap aktif sementara."
-fi
+ok "🔓 SSH key aktif, dan login password tetap diizinkan (mode hybrid)."
+warn "⚠️  Pastikan password root kamu kuat banget ya 💪"
 
 systemctl restart ssh || systemctl restart sshd
 sleep 0.5
@@ -163,7 +160,7 @@ systemctl enable --now fail2ban
 ok "💪 Fail2Ban aktif! Bot iseng bakal langsung auto tendang 👢"
 
 # -------------------------
-# [5] Password Policy (pwquality)
+# [5] Password Policy
 # -------------------------
 say "🔒 Terapin kebijakan password yang super kuat..."
 sleep 0.8
@@ -184,7 +181,7 @@ fi
 ok "✔️ Password minimal 15 karakter + simbol wajib diterapkan!"
 
 # -------------------------
-# [6] Password root (prompt to change/validate)
+# [6] Password root
 # -------------------------
 say "🧠 Yuk periksa password root kamu..."
 warn "Kalau masih lemah, ganti sekarang ya (min 15 karakter, huruf besar, angka, & simbol)"
@@ -219,7 +216,7 @@ sysctl --system >/dev/null 2>&1
 ok "🌈 Sistem kamu udah super solid dan auto-update aktif!"
 
 # -------------------------
-# [8] Final recap (clean aligned)
+# [8] Final Recap
 # -------------------------
 END_TIME=$(date +%s)
 RUNTIME=$((END_TIME - START_TIME))
@@ -236,6 +233,6 @@ printf "${WHITE} %-30s ${CYAN}│${GREEN} %s${NC}\n" "🛠 Auto Update" "$(syste
 printf "${WHITE} %-30s ${CYAN}│${MAGENTA} %s detik${NC}\n" "⏱ Waktu Eksekusi" "$RUNTIME"
 printf "${WHITE} %-30s ${CYAN}│${BLUE} %s${NC}\n" "🪵 Log hasil" "$LOGFILE"
 echo -e "${MAGENTA}────────────────────────────────────────────────────────────${NC}"
-echo -e "${GREEN}${BOLD}✅ Semua beres! Server kamu sekarang udah jauh lebih aman & kece 💚${NC}"
-echo -e "${YELLOW}${BOLD}⚠️  Tes login SSH pakai key di port ${PORT} dulu sebelum logout ya.${NC}"
+echo -e "${GREEN}${BOLD}✅ Semua beres! Server kamu sekarang udah super aman & kece 💚${NC}"
+echo -e "${YELLOW}${BOLD}⚠️  Tes login SSH pakai key atau password di port ${PORT} sebelum logout ya.${NC}"
 echo -e "${MAGENTA}────────────────────────────────────────────────────────────${NC}\n"
