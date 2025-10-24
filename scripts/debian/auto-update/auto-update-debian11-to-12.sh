@@ -1,171 +1,116 @@
 #!/bin/bash
-# =====================================================
-# 🌈 DIMENSI LABS • AUTO UPGRADE DEBIAN 11 → 12 (BOOKWORM)
-# Ultimate Edition: Smart Color + Progress Animation + Anti-Disconnect
-# =====================================================
-
-# 🎨 Warna
-RED='\033[1;31m'
-GREEN='\033[1;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[1;34m'
-CYAN='\033[1;36m'
-BOLD='\033[1m'
-RESET='\033[0m'
-
-# 🌀 Spinner animasi (biar gak sepi)
-spin() {
-    local pid=$!
-    local spinstr='|/-\'
-    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
-        local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep 0.1
-        printf "\b\b\b\b\b\b"
-    done
-}
-
-# 🔄 Progress bar simulasi (biar keren aja 😎)
-progress_bar() {
-    local duration=${1}
-    local filled=0
-    local total=30
-    while [ $filled -lt $total ]; do
-        sleep $(echo "$duration / $total" | bc -l)
-        ((filled++))
-        printf "\r${CYAN}Progress: [%-${total}s] %d%%${RESET}" $(printf '#%.0s' $(seq 1 $filled)) $((filled * 100 / total))
-    done
-    echo ""
-}
-
-# 💡 Aktifkan warna otomatis
-if [ -z "$TERM" ] || [[ "$TERM" != *"color"* ]]; then
-  export TERM=xterm-256color
-fi
-
-# 🧠 Deteksi screen
-if [ -n "$STY" ]; then
-  if ! echo "$TERM" | grep -q "color"; then
-    echo -e "${YELLOW}⚠️  Kamu di dalam 'screen' tapi warna belum aktif, menyalakan otomatis...${RESET}"
-    export TERM=xterm-256color
-    sleep 1
-  fi
-fi
-
-clear
-echo -e "${CYAN}====================================================="
-echo -e " 🌈 ${BOLD}DIMENSI LABS - AUTO UPGRADE DEBIAN 11 ➜ 12 (BOOKWORM)${RESET}"
-echo -e "=====================================================${RESET}\n"
-
-# 🚫 Cek root
-if [ "$(id -u)" -ne 0 ]; then
-  echo -e "${RED}❌ Harus dijalankan sebagai root!${RESET}"
-  echo -e "Gunakan: ${YELLOW}sudo su${RESET}"
-  exit 1
-fi
-
-# ⚠️ Cek screen
-if [ -z "$STY" ] && [ -z "$TMUX" ]; then
-  echo -e "${YELLOW}⚠️  Jalankan di dalam 'screen' biar gak disconnect.${RESET}\n"
-  echo -e "Gunakan:"
-  echo -e "  ${CYAN}apt install screen -y${RESET}"
-  echo -e "  ${CYAN}screen -S upgrade -T xterm-256color${RESET}\n"
-  exit 1
-fi
-
-echo -e "${GREEN}🔥 Oke, semua siap. Kita mulai proses upgrade Debian 11 ➜ 12 dengan aman.${RESET}\n"
-sleep 2
+RED='\033[1;31m'; GREEN='\033[1;32m'; YELLOW='\033[1;33m'; CYAN='\033[1;36m'; RESET='\033[0m'
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
 export APT_LISTCHANGES_FRONTEND=none
+export SYSTEMD_RESTART_NO_BLOCK=yes
 
-# -------------------------------------------
-# 1️⃣ Backup
-# -------------------------------------------
-BACKUP_DIR="/root/backup-before-upgrade-$(date +%F_%H-%M)"
-mkdir -p "$BACKUP_DIR"
-echo -e "${CYAN}${BOLD}1️⃣ Membackup konfigurasi penting...${RESET}"
-sleep 1
-{
-    cp -a /etc/network/interfaces "$BACKUP_DIR/interfaces.bak" 2>/dev/null || true
-    cp -a /etc/netplan "$BACKUP_DIR/netplan.bak" 2>/dev/null || true
-    cp -a /etc/ssh/sshd_config "$BACKUP_DIR/sshd_config.bak" 2>/dev/null || true
-    cp -a /etc/resolv.conf "$BACKUP_DIR/resolv.conf.bak" 2>/dev/null || true
-    cp -a /etc/apt/sources.list "$BACKUP_DIR/sources.list.bak" 2>/dev/null || true
-} & spin
-echo -e "\n${GREEN}✅ Backup selesai di: ${BOLD}$BACKUP_DIR${RESET}\n"
-sleep 1
+mkdir -p /usr/lib/needrestart/restart.d
+echo 'exit 0' > /usr/lib/needrestart/restart.d/sshd
+chmod +x /usr/lib/needrestart/restart.d/sshd
 
-# -------------------------------------------
-# 2️⃣ Update awal Debian 11
-# -------------------------------------------
-echo -e "${CYAN}${BOLD}2️⃣ Update sistem Debian 11 sebelum upgrade...${RESET}"
-(apt update -y && apt upgrade -y && apt full-upgrade -y) & spin
-echo -e "\n${GREEN}✅ Sistem Debian 11 sudah up-to-date.${RESET}\n"
-sleep 1
+MSG_ID_START="Memulai peningkatan sistem Debian 11 ke Debian 12..."
+MSG_ID_GLIBC="Memperbarui pustaka sistem (GLIBC dan locales)..."
+MSG_ID_REPO="Memeriksa dan mengubah repository ke Debian 12..."
+MSG_ID_KEY="Menambahkan kunci GPG untuk repository Debian 12..."
+MSG_ID_UPDATE="Memperbarui daftar paket..."
+MSG_ID_UPGRADE="Menjalankan peningkatan sistem penuh..."
+MSG_ID_REPAIR="Memeriksa dan memperbaiki GLIBC jika diperlukan..."
+MSG_ID_CLEAN="Membersihkan paket lama dan cache..."
+MSG_ID_REBOOT="Sistem akan reboot otomatis dalam"
+MSG_ID_DONE="Selesai! Sistem berhasil ditingkatkan ke Debian 12."
 
-# -------------------------------------------
-# 3️⃣ Mirror check
-# -------------------------------------------
-echo -e "${CYAN}${BOLD}3️⃣ Mendeteksi mirror terbaik...${RESET}"
-if curl -s --head --connect-timeout 5 http://kambing.ui.ac.id/debian/dists/bookworm/Release | grep "200 OK" > /dev/null; then
-  MIRROR="http://kambing.ui.ac.id/debian/"
-  echo -e "${GREEN}🇮🇩 Menggunakan mirror lokal Indonesia.${RESET}\n"
+MSG_EN_START="Starting system upgrade from Debian 11 to Debian 12..."
+MSG_EN_GLIBC="Upgrading core libraries (GLIBC and locales)..."
+MSG_EN_REPO="Checking and switching repositories to Debian 12..."
+MSG_EN_KEY="Adding Debian 12 repository GPG keys..."
+MSG_EN_UPDATE="Updating package list..."
+MSG_EN_UPGRADE="Running full system upgrade..."
+MSG_EN_REPAIR="Checking and repairing GLIBC if needed..."
+MSG_EN_CLEAN="Cleaning old packages and cache..."
+MSG_EN_REBOOT="The system will reboot automatically in"
+MSG_EN_DONE="Done! System successfully upgraded to Debian 12."
+
+fade_line(){ echo -e "$1"; sleep 0.25; }
+
+run_with_spinner(){
+  local cmd="$1"; local msg="$2"; local spinstr='|/-\'; local cols=$(tput cols)
+  echo -ne "${CYAN}${msg}${RESET}"
+  eval "$cmd" >/dev/null 2>&1 &
+  local pid=$!
+  while kill -0 $pid 2>/dev/null; do
+    for (( i=0; i<${#spinstr}; i++ )); do
+      local spinner_pos=$((cols - 4))
+      printf "\r${CYAN}%s${RESET}%*s${YELLOW}%c${RESET}" "$msg" $((spinner_pos - ${#msg})) "" "${spinstr:$i:1}"
+      sleep 0.15
+    done
+  done
+  wait $pid
+  printf "\r${GREEN}%s ... Done!%*s${RESET}\n" "$msg" $((cols - ${#msg} - 12)) ""
+}
+
+countdown_reboot(){
+  local seconds=10; local spinstr='|/-\'; local cols=$(tput cols)
+  local msg="$REBOOT"; local unit; if [ "$LANG" = "EN" ]; then unit="seconds"; else unit="detik"; fi
+  local end_time=$((SECONDS + seconds))
+  while [ $SECONDS -lt $end_time ]; do
+    for (( i=0; i<${#spinstr}; i++ )); do
+      local remaining=$((end_time - SECONDS))
+      [ $remaining -lt 0 ] && break
+      local spinner_pos=$((cols - 4))
+      printf "\r${YELLOW}%s ${RESET}%2d %s %*s${CYAN}%c${RESET}" "$msg" "$remaining" "$unit" $((spinner_pos - ${#msg} - 14)) "" "${spinstr:$i:1}"
+      sleep 0.15
+    done
+  done
+  printf "\r${GREEN}%s${RESET}\n" "$DONE"
+  sleep 1
+  reboot
+}
+
+clear
+fade_line "==============================================="
+fade_line " DIMENSI LABS — Debian 11 ➜ 12"
+fade_line "===============================================\n"
+fade_line "${YELLOW}Silakan pilih bahasa tampilan / Please select display language.${RESET}"
+fade_line "${CYAN}-----------------------------------------------${RESET}"
+fade_line " [1] Bahasa Indonesia"
+fade_line " [2] English"
+fade_line "${CYAN}-----------------------------------------------${RESET}\n"
+read -p "Pilih [1/2]: " LANG_CHOICE; echo ""
+if [ "$LANG_CHOICE" = "2" ]; then LANG="EN"; else LANG="ID"; fi
+
+if [ "$LANG" = "EN" ]; then
+  START=$MSG_EN_START; GLIBC=$MSG_EN_GLIBC; REPO=$MSG_EN_REPO; KEY=$MSG_EN_KEY
+  UPDATE=$MSG_EN_UPDATE; UPGRADE=$MSG_EN_UPGRADE; REPAIR=$MSG_EN_REPAIR
+  CLEAN=$MSG_EN_CLEAN; REBOOT=$MSG_EN_REBOOT; DONE=$MSG_EN_DONE
 else
-  MIRROR="http://deb.debian.org/debian/"
-  echo -e "${YELLOW}🌍 Mirror lokal gak respons, pakai mirror global.${RESET}\n"
+  START=$MSG_ID_START; GLIBC=$MSG_ID_GLIBC; REPO=$MSG_ID_REPO; KEY=$MSG_ID_KEY
+  UPDATE=$MSG_ID_UPDATE; UPGRADE=$MSG_ID_UPGRADE; REPAIR=$MSG_ID_REPAIR
+  CLEAN=$MSG_ID_CLEAN; REBOOT=$MSG_ID_REBOOT; DONE=$MSG_ID_DONE
 fi
+
+fade_line "${CYAN}$START${RESET}\n"
 sleep 1
 
-# -------------------------------------------
-# 4️⃣ Update sources.list
-# -------------------------------------------
-echo -e "${CYAN}${BOLD}4️⃣ Mengganti repository ke Debian 12 (Bookworm)...${RESET}"
-cat <<EOF > /etc/apt/sources.list
-deb ${MIRROR} bookworm main contrib non-free non-free-firmware
-deb ${MIRROR} bookworm-updates main contrib non-free non-free-firmware
-deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
-EOF
-echo -e "${GREEN}✅ Repository diganti ke Debian 12.${RESET}\n"
+run_with_spinner "sed -i 's/bullseye/bookworm/g' /etc/apt/sources.list" "$REPO"
+run_with_spinner "apt install -y debian-archive-keyring" "$KEY"
+run_with_spinner "apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 6ED0E7B82643E131 78DBA3BC47EF2265 F8D2585B8783D481" "$KEY"
+
+fade_line "${CYAN}$GLIBC${RESET}"
+apt update -y >/dev/null 2>&1
+apt install -y libc6 locales >/dev/null 2>&1
 sleep 1
 
-# -------------------------------------------
-# 5️⃣ Update repo baru
-# -------------------------------------------
-echo -e "${CYAN}${BOLD}5️⃣ Update daftar paket dari repository Debian 12...${RESET}"
-(apt clean && apt update -y) & spin
-echo -e "\n${GREEN}✅ Repository Debian 12 aktif.${RESET}\n"
-sleep 1
+run_with_spinner "apt update -y" "$UPDATE"
+run_with_spinner "apt -y --allow-downgrades --allow-remove-essential --allow-change-held-packages -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" full-upgrade" "$UPGRADE"
 
-# -------------------------------------------
-# 6️⃣ Full upgrade
-# -------------------------------------------
-echo -e "${BLUE}${BOLD}6️⃣ Mulai proses upgrade penuh ke Debian 12...${RESET}"
-echo -e "${YELLOW}☕ Silakan ngopi dulu, ini makan waktu agak lama.${RESET}"
-progress_bar 30
-apt -y --allow-downgrades --allow-remove-essential --allow-change-held-packages \
-  -o Dpkg::Options::="--force-confdef" \
-  -o Dpkg::Options::="--force-confold" \
-  full-upgrade
-echo -e "\n${GREEN}✅ Upgrade utama selesai.${RESET}\n"
-sleep 1
+fade_line "${CYAN}$REPAIR${RESET}"
+if ! ldd --version 2>/dev/null | grep -q "2\.3[5-6]"; then
+  LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/lib64 apt -f install -y >/dev/null 2>&1
+  LD_LIBRARY_PATH=/lib/x86_64-linux-gnu:/lib64 dpkg --configure -a >/dev/null 2>&1
+  apt install --reinstall -y libc6 >/dev/null 2>&1
+fi
 
-# -------------------------------------------
-# 7️⃣ Bersih-bersih
-# -------------------------------------------
-echo -e "${CYAN}${BOLD}7️⃣ Membersihkan sisa paket lama...${RESET}"
-(apt autoremove -y && apt autoclean -y) & spin
-echo -e "\n${GREEN}✅ Sistem bersih dan segar kembali.${RESET}\n"
-
-# -------------------------------------------
-# 8️⃣ Final info
-# -------------------------------------------
-echo -e "${GREEN}${BOLD}🎉 Upgrade Debian 12 (Bookworm) sukses tanpa error!${RESET}"
-echo -e "📦 Versi saat ini: ${BOLD}$(cat /etc/debian_version)${RESET}"
-echo -e "📂 Backup konfigurasi ada di: ${BOLD}$BACKUP_DIR${RESET}"
-echo -e "${CYAN}💡 Tips: Jalankan 'apt update && apt upgrade -y' lagi setelah reboot.${RESET}\n"
-echo -e "${YELLOW}💤 Sistem akan reboot otomatis dalam 15 detik...${RESET}"
-progress_bar 15
-reboot
+run_with_spinner "apt autoremove -y && apt autoclean -y" "$CLEAN"
+countdown_reboot
