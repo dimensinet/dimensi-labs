@@ -1,98 +1,140 @@
-# Auto Update Debian 11 → 12 (Bookworm)
-### 🧩 by [Dimensi Labs](https://github.com/dimensinet/dimensi-labs)
-
-Script ini dibuat untuk melakukan **upgrade otomatis dan aman dari Debian 11 (Bullseye) ke Debian 12 (Bookworm)**  
-dengan tampilan **berwarna, animasi progres**, dan proteksi dari **disconnect SSH**.
+# DIMENSI LABS — Debian 11 ➜ 12 (Fail-Safe Upgrade Mode)
 
 ---
 
-## ✨ Fitur Utama
-| Fitur | Deskripsi |
-|-------|------------|
-| 🎨 Warna Otomatis | Terminal otomatis aktif warna ANSI, bahkan di dalam `screen` |
-| 🌀 Spinner Animasi | Menampilkan animasi saat proses panjang agar tidak membosankan |
-| 📊 Progress Bar | Menampilkan status upgrade secara visual |
-| 💾 Auto Backup | Semua konfigurasi penting dibackup sebelum upgrade |
-| 🧠 Smart Detect | Deteksi otomatis apakah dijalankan di `screen` atau `tmux` |
-| 🔒 Anti Disconnect | Aman digunakan melalui SSH |
-| ☕ Friendly UX | Bahasa santai tapi tetap profesional |
+## 🇮🇩 Tentang Proyek
+
+**DIMENSI LABS — Debian 11 ➜ 12 (Fail-Safe Upgrade Mode)** adalah skrip otomatis aman untuk SSH,  
+dirancang untuk meningkatkan sistem dari **Debian 11 (Bullseye)** ke **Debian 12 (Bookworm)** tanpa gangguan koneksi dan tanpa prompt interaktif.
+
+Skrip ini memastikan proses peningkatan berlangsung mulus, bahkan saat pustaka sistem seperti **GLIBC (libc6)** diperbarui.
 
 ---
 
-## 📦 Instalasi
+## 🇬🇧 About This Project
 
-### 1️⃣ Download Script
-Gunakan `wget` untuk mengunduh langsung dari repository ini:
-```bash
-mkdir -p /opt/dimensi-labs/debian/
-wget -O /opt/dimensi-labs/debian/auto-update-debian11-to-12.sh https://raw.githubusercontent.com/dimensinet/dimensi-labs/main/scripts/debian/auto-update/auto-update-debian11-to-12.sh
-```
+**DIMENSI LABS — Debian 11 ➜ 12 (Fail-Safe Upgrade Mode)** is a fully automated, SSH-safe upgrade script  
+designed to transition systems from **Debian 11 (Bullseye)** to **Debian 12 (Bookworm)** seamlessly and non-interactively.
 
-### 2️⃣ Beri Izin Eksekusi
-```bash
-chmod +x /opt/dimensi-labs/debian/auto-update-debian11-to-12.sh
-```
-
-### 3️⃣ (Opsional) Buat Shortcut Command
-Agar bisa dijalankan dari mana saja tanpa nulis `.sh`:
-```bash
-ln -sf /opt/dimensi-labs/debian/auto-update-debian11-to-12.sh /usr/local/bin/auto-update-debian11-to-12
-```
+It ensures a safe process even when upgrading core components like **GLIBC (libc6)**.
 
 ---
 
-## 🚀 Cara Menjalankan
+## ✨ Fitur Utama / Main Features
 
-> ⚠️ **Disarankan dijalankan di dalam `screen` atau `tmux` agar tidak disconnect saat upgrade.**
+| 🇮🇩 Fitur | 🇬🇧 Feature |
+|-----------|-------------|
+| 🔒 Aman untuk SSH — Tidak akan terputus selama upgrade | 🔒 SSH-Safe — No disconnection during upgrade |
+| ⚙️ Tangani GLIBC secara aman sebelum upgrade penuh | ⚙️ Handles GLIBC upgrade safely before full upgrade |
+| 🌐 Bilingual (Bahasa Indonesia & English) | 🌐 Bilingual (Indonesian & English) |
+| 🧩 Mode non-interaktif, tanpa prompt | 🧩 Fully non-interactive mode, no prompts |
+| 🔁 Reboot otomatis setelah selesai | 🔁 Automatic reboot after completion |
+| 🎛️ Tampilan profesional dengan spinner kanan | 🎛️ Clean interface with right-aligned spinner |
+| 🧼 Bersihkan cache & paket lama otomatis | 🧼 Automatically cleans old packages and cache |
 
-Jalankan langkah ini:
+---
 
-```bash
-apt install screen -y
-screen -S upgrade -T xterm-256color
-auto-update-debian11-to-12
+## 🧱 Persyaratan / Requirements
+
+Pastikan sistem memiliki paket berikut:
+```
+apt install -y curl gnupg2 lsb-release ca-certificates locales
 ```
 
-Atau jika belum membuat shortcut:
-
-```bash
-bash /opt/dimensi-labs/debian/auto-update-debian11-to-12.sh
+Make sure the following packages are installed:
+```
+apt install -y curl gnupg2 lsb-release ca-certificates locales
 ```
 
 ---
 
-## 🧱 Struktur Script
-📁 `/opt/dimensi-labs/debian/auto-update-debian11-to-12.sh`
+## 🚀 Cara Menggunakan / How to Use
 
-### 📋 Langkah-langkah dalam script:
-1. **Cek root & screen**
-2. **Aktifkan mode warna ANSI**
-3. **Backup konfigurasi penting**
-4. **Update sistem Debian 11**
-5. **Deteksi mirror terbaik (lokal/global)**
-6. **Ganti sources.list ke Debian 12**
-7. **Update repo Debian 12**
-8. **Full upgrade otomatis**
-9. **Hapus paket lama**
-10. **Reboot otomatis setelah sukses**
+### 🇮🇩 Langkah:
+1. Unduh skrip:
+   ```bash
+   wget https://github.com/dimensinet/dimensi-debian-upgrade/raw/main/upgrade-failsafe.sh -O upgrade-failsafe.sh
+   chmod +x upgrade-failsafe.sh
+   ```
 
----
+2. Jalankan:
+   ```bash
+   sudo bash upgrade-failsafe.sh
+   ```
 
-## 📂 Lokasi Backup
-Sebelum upgrade, semua file penting disimpan di:
-```
-/root/backup-before-upgrade-YYYY-MM-DD_HH-MM/
-```
+3. Tunggu hingga proses selesai dan sistem reboot otomatis.
 
----
-
-
-## 🧑‍💻 Dibuat Oleh
-**Dimensi Labs**  
-> Open-source automation tools for Linux, Mikrotik, and server management.  
-> https://github.com/dimensinet
+4. Setelah reboot, periksa versi Debian:
+   ```bash
+   lsb_release -a
+   ```
+   Hasil yang diharapkan:
+   ```
+   Distributor ID: Debian
+   Description:    Debian GNU/Linux 12 (bookworm)
+   Release:        12
+   Codename:       bookworm
+   ```
 
 ---
 
-## ⚙️ Lisensi
-MIT License © 2025 [Dimensi Labs](https://github.com/dimensinet)
+### 🇬🇧 Steps:
+1. Download the script:
+   ```bash
+   wget https://github.com/dimensinet/dimensi-debian-upgrade/raw/main/upgrade-failsafe.sh -O upgrade-failsafe.sh
+   chmod +x upgrade-failsafe.sh
+   ```
+
+2. Run it:
+   ```bash
+   sudo bash upgrade-failsafe.sh
+   ```
+
+3. Wait until the process finishes and the system reboots automatically.
+
+4. After reboot, check your Debian version:
+   ```bash
+   lsb_release -a
+   ```
+   Expected output:
+   ```
+   Distributor ID: Debian
+   Description:    Debian GNU/Linux 12 (bookworm)
+   Release:        12
+   Codename:       bookworm
+   ```
+
+---
+
+
+
+## ⚠️ Catatan Penting / Important Notes
+
+🇮🇩
+- Lakukan **backup atau snapshot** sebelum menjalankan skrip.
+- Skrip ini telah diuji di berbagai server Debian 11 (KVM, VPS, Bare Metal).
+- Hindari menjalankan skrip lain selama proses berlangsung.
+
+🇬🇧
+- Always **perform a backup or snapshot** before running the script.
+- Tested on multiple Debian 11 environments (KVM, VPS, Bare Metal).
+- Avoid running other heavy operations during upgrade.
+
+---
+
+## 🧩 Lisensi / License
+
+**License:** MIT  
+You are free to use, modify, and distribute this script with attribution.
+
+---
+
+## 👨‍💻 Kredit / Credits
+
+🇮🇩
+Dikembangkan oleh **DIMENSI LABS**  
+Pemelihara: [Your Name or GitHub Username]
+
+🇬🇧
+Developed by **DIMENSI LABS**  
+Maintainer: [Your Name or GitHub Username]
